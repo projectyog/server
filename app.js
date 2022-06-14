@@ -9,12 +9,13 @@ const app = express();
 // Configure ENV File & Require Connection File 
 dotenv.config({path : './config.env'});
 require('./db/conn');
-const port = process.env.PORT;
+const port = process.env.PORT  || 4000;
 
 // Require Model
 const Users = require('./models/userSchema');
 const Message = require('./models/msgSchema.js');
 const authenticate = require('./middleware/authenticate')
+const ShortUrl = require('./models/urlSchema.js')
 
 // These Method is Used to Get Data and Cookies from FrontEnd
 app.use(express.json());
@@ -83,7 +84,25 @@ app.post('/login', async (req, res)=>{
         res.status(400).send(error);
     }
 })
+// short url
+app.post('/shortUrls',async (req,res)=>{
+    try{
+  await ShortUrl.create({full: req.body.full})
+   res.redirect('/')
+    } catch(error){
+        res.status(400).send(error)
+    }
+})
 
+// get req for url
+app.get('/shortned', async (req, res)=>{
+    try {
+        const shortUrls = ShortUrl.find()
+    res.render('index',{shortUrls:shortUrls})
+    } catch (error){
+        res.status(400).send(error)
+    }
+})
 // Message
 app.post('/message', async (req, res)=>{
     try {
@@ -116,9 +135,20 @@ app.get('/logout', (req, res)=>{
     res.status(200).send("User Logged Out")
 })
 
+
 // Authentication
 app.get('/auth', authenticate, (req, res)=>{
 
+})
+//handling short url 
+app.get('/:shortUrl',async(req,res)=>{
+    const shortUrl = await ShortUrl.findOne({short:req.params.shortUrl})
+     if(shortUrl === null) return res.sendStatus(404)
+
+     shortUrl.clicks++
+     shortUrl.save()
+
+     res.redirect(shortUrl.full)
 })
 
 // Run Server 
